@@ -1,152 +1,158 @@
 #include "ofApp.h"
-#define AUDIODEV    4
+
+#define AUDIODEV    2
 #define BANDWIDTH   32.f
 #define SAMPLERATE  44100.f
-
-// Use Meter-trigger bool for activating functions from visualizer... :)
-// Record piezo samples... 
+#define BUFSIZE 256
+#define FRAMERATE   60
+#define kAUDIOANALYZER  1
+#define kPAUL   0
+#define kBATOBE 0
+#define MUTE    0
 
 //--------------------------------------------------------------
 void ofApp::setup(){
+    // OF
     ofSetWindowShape(1280, 800);
+//    ofSetWindowShape(100, 100);
     ofSetFullscreen(false);
     ofBackground(0);
     ofSetBackgroundAuto(true);
-    ofSetFrameRate(60);
+    ofSetFrameRate(FRAMERATE);
     
-    audioSetup();
+    // GUI
+    gui.setup();
+    gui.add(inputGain.setup("inputGain", 1., 0., 10.));
     
-    visualizer = new Visualizer();
-    analyzer = new Analyzer(0, "Analyzer", bufferSize, SAMPLERATE, 4, 43);
+    // VISUALIZER
     
-    analyzer->cutOffFreqs[0] = 200; analyzer->cutOffFreqs[1] = 2000; analyzer->cutOffFreqs[2] = 5000; analyzer->cutOffFreqs[3] = SAMPLERATE/2.;
+    if(kBATOBE){
+        batobe = new Batobe;
+        visualizer = &(batobe->visualizer);
+    }
+    if(kPAUL)
+        visualizer = new Visualizer;
+    
+//    visualizer->displayVorm(true);
+//    bDisplayVisualizer = true;
+    
+    // ANALYZER
+    if(kAUDIOANALYZER){
+        // AUDIO
+        analyzer = new Analyzer(this, BUFSIZE, SAMPLERATE);
+        analyzer->bDisplay = true;
+    }
+//    float frequencies [3] = {0.2, 4.0, 9.0}; // Kan dit ook in de functie?
+//    analyzer->setFilters(3, frequencies);
+    
+    if(kPAUL) paul = new Paul(analyzer, nullptr);
+//    if(kPAUL) paul = new Paul(nullptr, visualizer);
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
+    // OF
     ofSetWindowTitle(ofToString(ofGetFrameRate()));
-    visualizer->update();
     
+    // Paul
+    if(kPAUL)
+        paul->update();
     
-//     Lines
-//    if(analyzer->Hfc>0.5)
-//        visualizer->verticalNoise();
-//    if(analyzer->valuesPerBand[0].RMS>0.4)
-//        visualizer->horizontalNoise();
-//
-////     Vlakken
-//    if(analyzer->valuesPerBand[1].RMS>0.4){
-//        visualizer->displayRandomQuarter();
-//    }
+    if(kBATOBE)
+        batobe->update();
     
-    // VerticalBar
-    if((analyzer->valuesPerBand[0].RMS)*(analyzer->HarmonicComplexity)>0.1){
-        visualizer->displayVerticalBar();
-    }
+    // VISUALIZER
+    if(visualizer)
+        visualizer->update();
+    
+    // ANALYZER
+    if(kAUDIOANALYZER)
+        analyzer->update();
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
     ofSetColor(0);
-    visualizer->display();
-    if(bDisplayAnalyzer)
+    if(bDisplayVisualizer){
+        if(visualizer)
+            visualizer->display();
+    }
+    if(kAUDIOANALYZER)
         analyzer->display();
+    if(bDisplayGui)
+        gui.draw();
+    if(kPAUL)
+        paul->display();
 }
 
 //------------------------------------------------------------------
 void ofApp::audioOut(float * output, int bufferSize, int nChannels){
-    for (int i = 0; i < bufferSize; i++){
-        output[i*nChannels] = buffer_1[i];
-        output[(i*nChannels)+1] = buffer_1[i];
+    if(kAUDIOANALYZER){
+        if(!MUTE && analyzer){
+            for (int i = 0; i < bufferSize; i++){
+                float val;
+        //        val = analyzer->filteredBuffers[3][i];
+                val = analyzer->buffer[i];
+                output[i*nChannels] = val;
+                output[(i*nChannels)+1] = val;
+            }
+        }
     }
 }
 
 //------------------------------------------------------------------
 void ofApp::audioIn(float * input, int bufferSize, int nChannels){
-    // Fill the buffer with incoming audio
-    for (int i = 0; i < bufferSize; i++){
-        buffer_1[i] = input[i*nChannels]*inputGain;
+    if(kAUDIOANALYZER){
+        for (int i = 0; i < bufferSize; i++){
+            if(analyzer)
+                analyzer->buffer[i] = input[i*nChannels]*inputGain;
+        }
+        if(analyzer)
+            analyzer->process(analyzer->buffer, BUFSIZE);
     }
-    analyzer->process(buffer_1, bufferSize);
 }
 
 //--------------------------------------------------------------
 void ofApp::exit(){
-    soundStream.stop();
-    soundStream.close();
+    if(kAUDIOANALYZER)
+        delete analyzer;
 }
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
     switch(key){
-        case 32:
-            visualizer->horizontalNoise();
-            visualizer->verticalNoise();
-            break;
-        case '1':
-            visualizer->displayRandomQuarter();
-            break;
-        case 'g':
-            analyzer->bDisplayGui = !analyzer->bDisplayGui;
-            break;
-        case 'a':
-            bDisplayAnalyzer = !bDisplayAnalyzer;
-            break;
+//        case 32:
+////            if(visualizer){
+////                visualizer->horizontalNoise();
+////                visualizer->verticalNoise();
+////            }
+//            break;
+//        case 'v':
+//            bDisplayVisualizer = !bDisplayVisualizer;
+//            break;
+//        case 'q':
+//            bDisplayGui = !bDisplayGui;
+//            break;
+//
+//        case 's':
+//            if(kAUDIOANALYZER)
+//                analyzer->saveXmlValues();
+//            break;
     }
+    if(kAUDIOANALYZER)
+        analyzer->analyzerKeys(key);
+    
+    if(kPAUL)
+        paul->keys(key);
+    
+    if(kBATOBE)
+        batobe->keys(key);
 }
-
-//--------------------------------------------------------------
-void ofApp::drawFreqBandTracks(){
-    ofSetColor(0);
-    for(int i=0; i<BANDWIDTH; i++){
-        for(int j=0; j<freqBandTracksSize/BANDWIDTH; j++){
-            ofDrawLine(j, ofGetWindowHeight()/BANDWIDTH*i, j, (ofGetWindowHeight()/BANDWIDTH*i)-(freqBandTracks[i+((j+1)*(int)BANDWIDTH)]*(ofGetWindowHeight()/BANDWIDTH)));
-        }
-//        cout << i << ": " << freqBandTracks[i+((0+1)*(int)BANDWIDTH)] << endl;
-    }
-}
-
-//--------------------------------------------------------------
-void ofApp::audioSetup(){
-    bufferSize = 1024;
-
-    int outChannels = 2;
-    int inChannels = 1;
-    int ticksPerBuffer = bufferSize/64;
-    
-    buffer_1 =  new float[bufferSize];
-    freqBandTrackSize = 43*4;
-    freqBandTracksSize = BANDWIDTH*freqBandTrackSize;
-    freqBandTracks = new float[freqBandTracksSize]; // BPM is hier nog niet variabel, lengte is nu 4 seconden
-    
-    RMSValues = new float[(int)BANDWIDTH];
-    FluxValues = new float[(int)BANDWIDTH];
-    logSpectrum32 = new float[(int)BANDWIDTH];
-    
-    for(int i=0; i<freqBandTracksSize; i++)
-        freqBandTracks[i] = 0;
-    for(int i=0; i<BANDWIDTH; i++)
-        RMSValues[i] = FluxValues[i] = 0; // Kan dit zo?
-    for(int i = 0; i < bufferSize; i++)
-        buffer_1[i]= 0;
-    
-    cout << "Audio devices:" <<endl; cout<< soundStream.getDeviceList() << endl;
-    
-    soundStream.setDeviceID(AUDIODEV);
-    
-    soundStream.setup(this, outChannels, inChannels, SAMPLERATE, bufferSize, ticksPerBuffer);
-    
-    spectrumSize = bufferSize/2 + 1;
-    spectrum1 = new float[spectrumSize];
-    for(int i = 0; i < spectrumSize; i++)
-        spectrum1[i]= 0;
-}
-
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
-    for(int i=0; i<analyzer->numMeters; i++){
-        analyzer->meters[i]->isMouseOnMeter(x, y);
+    if(kAUDIOANALYZER){
+        analyzer->mouseFunc(x,y);
     }
 }
 

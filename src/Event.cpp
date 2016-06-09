@@ -17,11 +17,25 @@ Event::Event(){
     setColors(5);
     envelope = new Envelope(0.001, 100, 100);
     envelope->gate = true;
+    screencenter = ofVec2f(ofGetWindowWidth(), ofGetWindowHeight());
+}
+
+Event::~Event(){
+    *numEventsPtr--;
+    if(!next){
+        previous->next = nullptr;
+    } else{
+        previous->next = next;
+        next->previous = previous;
+    }
+    cout << "Event deleted!" << endl;
+    delete envelope;
 }
 
 void Event::update(){
     if(active && ofGetElapsedTimeMillis() > endTime){
         cout << "Event (id:"<<id<<") has passed!" << endl;
+        ownDtor();
         delete this;
     }
 }
@@ -35,3 +49,31 @@ void Event::setColors(int numColors){
     colors[4] = ofColor(225,245,196);
     this->numColors = numColors;
 }
+
+void Event::setEnvelope(int attack, int sustain, int release){
+    int totalTime = attack + sustain + release;
+    setEndTime(totalTime);
+    
+    envelope->attackTime = attack; envelope->sustainTime = sustain; envelope->releaseTime = release;
+}
+
+void Event::checkBorders(){
+    if(loc.x < 0){
+        loc.x = 0;
+        direction.x *= -1;
+    }
+    if((loc.x+size.x) > ofGetWindowWidth()){
+        loc.x = ofGetWindowWidth()-size.x;
+        direction.x *= -1;
+    }
+    if((loc.y+size.y) > ofGetWindowHeight()){
+        loc.y = ofGetWindowHeight()-size.y;
+        direction.y *= -1;
+
+    }
+    if(loc.y < 0){
+        loc.y = 0;
+        direction.y *= -1;
+    }
+}
+

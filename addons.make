@@ -1,2 +1,9 @@
 ofxAudioAnalyzer
+ofxAudioUnit
 ofxGui
+ofxInputField
+ofxMidi
+ofxOpenCv
+ofxOsc
+ofxSyphon
+ofxXmlSettings

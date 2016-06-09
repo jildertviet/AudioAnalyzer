@@ -16,25 +16,18 @@
 class Event{
 public:
     Event();
-    ~Event(){
-        if(!next){
-            previous->next = nullptr;
-        } else{
-            previous->next = next;
-            next->previous = previous;
-        }
-        cout << "Event deleted!" << endl;
-        delete envelope;
-    }
+    ~Event();
     
     bool active=false;
     virtual void update();
     virtual void display(){};
+    virtual void ownDtor(){};
     float startTime, endTime;
     float seed;
     
-    int *numEvents;
-    void addNumEvents(){*(this->numEvents) += 1;};
+    int numEvents=1;
+    int* numEventsPtr;
+    void addNumEvents(){(this->numEvents)++;};
     void returnType(){cout<<type<<endl;};
     int id;
     Event* *array;
@@ -42,17 +35,39 @@ public:
     ofVec2f size, loc;
     ofColor *colors; int numColors; void setColors(int numColors); ofColor randomColor(){return colors[(int)ofRandom(numColors)];};
     float speed=1., maxAlpha=255;
-    ofColor color;
     string mode;
     Envelope* envelope;
     
     Event* next; Event* previous;
     bool last, first;
+    ofVec2f screencenter;
+    
+    Event* getNthEvent(int n){
+        if(n>=0 && next){
+            next->getNthEvent(n-1);
+        } else{
+            return this;
+        }
+    }
     
     virtual void specificFunction(){
         return;
     };
     
+    string returnType(bool recursive, bool fromEnd=false){
+        if(recursive && !fromEnd){
+            if(next)
+                returnType(true);
+            return type;
+        }
+        if(recursive && fromEnd){
+            if(getLast()->previous){
+                getLast()->returnType(true, true);
+            } else{
+                return type;
+            }
+        }
+    }
     void updateMain(){
         if(next)
             next->updateMain();
@@ -67,6 +82,8 @@ public:
     }
     
     void addEvent(Event* toAdd){
+        numEvents++;
+        toAdd->numEventsPtr = &numEvents;
         if(!next){
             next = toAdd;
             toAdd->previous = this;
@@ -75,6 +92,13 @@ public:
         }
         if(next)
             next->id = id+1;
+    }
+    
+    void addEventAsFirst(Event* toAdd){
+        if(next)
+            next->previous = toAdd;
+        next = toAdd;
+        return;
     }
     
     Event* getLast(){
@@ -90,6 +114,10 @@ public:
         endTime = startTime + duration;
     }
     
-
+    void setEnvelope(int attack, int sustain, int release);
+    ofVec2f direction;
+    
+    void checkBorders();
+    
 };
 #endif /* Event_hpp */

@@ -16,6 +16,10 @@
 class OnsetDetector{
 public:
     OnsetDetector();
+    
+    int localBufferSize=1024;
+    int historyBufferSize=44032;
+    float rate=1.;
     float bufLength, localEnergy=0, historyEnergy=0, C;
     int writePosLocal=0, readPosLocal, writePosHistory=0, readPosHistory;
     float *historyBuffer;
@@ -24,63 +28,76 @@ public:
     float c_value=1.3;
     
     
-    OnsetDetector(float c_value){
+    OnsetDetector(float c_value, bool withExternalBuffer=false){
+        // Normal audio rate = 1, adding a value to the buffer per audio sample
+        // When you use FFT, every [FFT-size] samples, there will be one value, so the rate will be 512
+        
+//        cout<<"LocalBufferSize: " << localBufferSize <<endl;
+        
         this->c_value = c_value;
         
-        cout << "OnsetDetector made" << endl;
+//        cout << "OnsetDetector made" << this << endl;
         
         // Allocating buffers: (1 for local energy (1024samples), and 1 for history energy (44032 samples))
-        historyBuffer = new float[44032];
-        for(int i=0; i<44032; i++)
+        historyBuffer = new float[historyBufferSize];
+        for(int i=0; i<historyBufferSize; i++)
             historyBuffer [0];
-        localBuffer = new float[1024];
-        for(int i=0; i<1024; i++)
-            localBuffer[i] = 0;
+        
+        if(!withExternalBuffer){
+            localBuffer = new float[localBufferSize];
+            for(int i=0; i<localBufferSize; i++)
+                localBuffer[i] = 0;
+        }
     }
     
-    bool process(float *buffer, int numSamples){
-        // storing some values, because that seems to be more efficient...
-        float value, output;
+    bool checkIfBeat();
+    
+    float getFlux(float *buffer, int bufferSize){
+        float average=0;
+        for(int i=0; i<bufferSize; i++){
+            average+=buffer[i];
+        }
+        average/=(float)bufferSize;
+        
+        float flux=0;
+        for(int i=0; i<bufferSize; i++){
+            flux+=(abs(average-buffer[i]));
+        }
+        flux/=(float)bufferSize;
+        return flux;
+    }
+    
+    void addValue(float value){
+        if(writePosLocal >= localBufferSize)
+            writePosLocal = 0;
+        if(writePosHistory >= historyBufferSize)
+            writePosHistory = 0;
         
         // Fill buffers
-        for (int i=0; i<numSamples; ++i){
-            value = buffer[i];
-            
-            // Write to local buffer of 1024 samples
-            localBuffer[writePosLocal] = value;
-            
-            // Write to history buffer of 44032 samples
-            historyBuffer[writePosHistory] = value;
+        // Write to local buffer of 1024 samples
+        localBuffer[writePosLocal++] = value;
 
-        }
+        // Write to history buffer of 44032 samples
+        historyBuffer[writePosHistory++] = value;
+    }
+    
+    void addValueToHisotryBuffer(float value){
+        if(writePosHistory >= historyBufferSize)
+            writePosHistory = 0;
         
-        //Only execute if a new buffer of 1024 samples is filled (instead of the 64 samples, the audio rate of SuperCollider)
-        if(writePosLocal == 0){
-            // Calculate average local energy
-            localEnergy = 0;
-            for(int i=0; i<1024; i++){
-                localEnergy += (localBuffer[i]*localBuffer[i]);
-            }
-            
-            // Calculate history energy
-            historyEnergy = 0;
-            for(int i=0; i<44032; i++){
-                historyEnergy += (historyBuffer[i]*historyBuffer[i]);
-            }
-            historyEnergy *= (1024.0/44032.0);
-            
-            // Compare local energy to history energy
-            if(localEnergy > (c_value * historyEnergy)){
-                if(beatDetected != 1)
-                    beatDetected = true;
-            } else{
-                if(beatDetected != 0)
-                    beatDetected =  false;
-            }
-            return beatDetected;
+        // Write to history buffer of 44032 samples
+        historyBuffer[writePosHistory++] = value;
+    }
+    
+    void writeToHistoryBuffer(float *buffer, int bufferSize){
+        for(int i=0; i<bufferSize; i++){
+            historyBuffer[i] = buffer[i];
         }
-        if(writePosLocal+=numSamples >= 1024)   writePosLocal = 0;
-        if(writePosHistory+=numSamples >= 44032)    writePosHistory = 0;
+        if(writePosHistory >= historyBufferSize){
+            writePosHistory = 0;
+        } else{
+            writePosHistory += bufferSize;
+        }
     }
 };
 

@@ -7,15 +7,15 @@
 //
 
 #include "Bar.hpp"
-
-Bar::Bar(int *numEvents, Event* *array){
-    this->numEvents = numEvents; this->array = array; type = "Bar"; returnType();
-    
-    colors[0] = ofColor::white;
-    loc = ofVec2f(ofGetWindowWidth()*ofNoise(ofGetElapsedTimeMillis()), 0);
-    size = ofVec2f(100, ofGetWindowHeight());
-    seed = ofGetElapsedTimef();
-}
+//
+//Bar::Bar(){
+//    this->numEvents = numEvents; this->array = array; type = "Bar"; returnType();
+//    
+//    colors[0] = ofColor::white;
+//    loc = ofVec2f(ofGetWindowWidth()*ofNoise(ofGetElapsedTimeMillis()), 0);
+//    size = ofVec2f(100, ofGetWindowHeight());
+//    seed = ofGetElapsedTimef();
+//}
 
 void Bar::display(){
     ofSetColor(colors[0]);

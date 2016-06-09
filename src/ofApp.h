@@ -3,10 +3,12 @@
 #include "ofMain.h"
 #include "ofxAudioAnalyzer.h"
 #include "Analyzer.hpp"
-#include "Functions.hpp"
-#include "MyThread.hpp"
+//#include "Functions.hpp"
+//#include "MyThread.hpp"
 #include "Visualizer.hpp"
 #include "ofxGui.h"
+#include "Batobe.hpp"
+#include "Paul.hpp"
 
 class ofApp : public ofBaseApp{
     
@@ -21,45 +23,16 @@ public:
     
     void audioOut(float * input, int bufferSize, int nChannels);
     void audioIn(float * input, int bufferSize, int nChannels);
-    
-    ofSoundStream soundStream;
-    ofxAudioAnalyzer audioAnalyzer1;
-    
-    float *buffer_1;
-    
-    float *spectrum1;
-    int spectrumSize;
-    
-    int bufferSize;
-    
-    
-    ////// TEST
-    
-    int xPos=0;
-    float *logSpectrum32;
-    
-//    void convertToLogSpectrum(float spectrum[], float newSpectrum[]);
-//    void addToFreqBandTracks(float logSpectrum[], float arrayToWrite[]);
-    float *freqBandTracks;
-    int freqBandTracksSize;
-    int freqBandTrackSize;
-//    int writePosFreqBandTracks=0;
-//    void calculateMostActiveBandRMS(float tracks[], float arrayToWrite[]);
-    float* RMSValues;
-//    void calculateMostActiveBandFlux(float tracks[], float arrayToWrite[]);
-    float* FluxValues;
-    
-    void drawFreqBandTracks();
-    
-    Functions*   functions;
 
-    Visualizer* visualizer;
+    Visualizer* visualizer = nullptr;
     Analyzer* analyzer;
+    Batobe* batobe;
+    Paul* paul;
     
-    void audioSetup();
+    ofxPanel gui;
+    ofxFloatSlider inputGain;
     
-    
-    float inputGain=1;
-    bool bDisplayAnalyzer=false;
+    bool bDisplayVisualizer=true;
+    bool bDisplayGui=false;
 };
 

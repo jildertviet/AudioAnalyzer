@@ -16,16 +16,18 @@
 class Noise: public Event{
 public:
     Noise(){ type = "Noise"; returnType();}
-    Noise(float duration, string mode = "horizontal");
+    Noise(float duration, ofColor* colors, string mode = "horizontal");
     void display();
     void horizontalNoise(int size); void verticalNoise(int size);
     void generateSeed();
     int lineWidth = 2;
+    int linesAmount = 100;
+    ofColor localColor;
 private:
     void specificFunction(){
         float val = envelope->process();
-        cout <<val<<endl;
-        color.a = maxAlpha * val;
+//        cout <<val<<endl;
+        localColor.a = maxAlpha * val;
     };
 };
 #endif /* Noise_hpp */
